@@ -1,16 +1,3 @@
-# Patente – Italian Driving Theory Study App (Public Code Version)
-
-This repository contains the **public, code-only version** of the Patente Driving Theory Study App.  
-It showcases the **React, Vite, TailwindCSS, internal tool scripts, and full project architecture**, while **excluding copyrighted driving‑theory JSON data**.
-
-This public version is ideal for:
-- Demonstrating your **frontend engineering skills**
-- Showing **clean architecture**, component structure, build tools
-- Including in your **CV**, GitHub profile, and job applications
-
----
-
-
 # 🚀 Project Overview
 
 The Patente App is a **slide-based learning interface** that loads structured topic files and displays them with:
