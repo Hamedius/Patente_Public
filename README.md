@@ -172,15 +172,3 @@ This public repository preserves:
 
 **Hamed Nahvi**  
 GitHub: https://github.com/Hamedius
-
----
-
-# ✔️ Purpose of This Public Repo
-
-This version is intentionally designed to:
-
-- Showcase technical skills  
-- Demonstrate project architecture  
-- Be included in résumés & portfolios  
-- Remain legally publishable  
-- Fully represent the engineering effort without exposing restricted data  
