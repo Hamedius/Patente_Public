@@ -1,0 +1,39 @@
+import React from 'react';
+import { useSelector } from 'react-redux';
+
+const SlideView = ({ i, isBullet, itArray, enSentsArr, extraEnParaFor }) => {
+  if (isBullet) return null;
+
+  // Build EN sentence list: extras from following rows FIRST, then the current item's EN.
+  const arrENparaRaw = (extraEnParaFor[i] || []).concat(enSentsArr);
+  const arrENpara = (() => {
+    const seen = new Set();
+    const out = [];
+    for (const part of arrENparaRaw) {
+      const t = (part || '').trim();
+      if (!t || seen.has(t)) continue;
+      seen.add(t);
+      out.push(t);
+    }
+    return out;
+  })();
+
+  const pickSent = (idx) => {
+    // EN: strict 1:1 mapping to Italian sentences; ignore extras
+    return (arrENpara[idx] || '').trim();
+  };
+
+  return (
+    <div>
+      {itArray.map((itSent, idx) => (
+        <p key={idx}>
+          <span>{itSent}</span>
+          <br />
+          <span>{pickSent(idx)}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+export default SlideView;

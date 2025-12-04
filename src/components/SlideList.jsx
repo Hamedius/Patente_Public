@@ -2,6 +2,8 @@ import React from 'react'
 
 // لیست اسلایدها (همان استایل کارتِ موضوعات) — شماره‌ها بدون صفر قبل
 export default function SlideList({ slides = [], onPick }) {
+  // مدیریت اسکرول در App.jsx انجام می‌شود؛ اینجا نیازی به اثر نیست.
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="space-y-3">

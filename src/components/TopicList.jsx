@@ -31,6 +31,7 @@ const manualFa = {
 
 // فهرست موضوع‌ها: عنوان ایتالیایی (نام فایل بدون .json) + ترجمهٔ فارسی دستی
 export default function TopicList({ topics = [], onPick }) {
+  // مدیریت اسکرول در App.jsx انجام می‌شود؛ اینجا نیازی به اثر نیست.
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="space-y-3">

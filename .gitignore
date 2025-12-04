@@ -1,9 +1,23 @@
 
+# Node / Vite
 node_modules/
 dist/
-
+.vite/
 *.log
 
-DS_Store
-.env
+# macOS
+.DS_Store
 
+# Environment
+.env
+.env.local
+.env.*
+
+# Data files (do NOT publish materials)
+public/data/*.json
+
+# Do not track this archive
+for installing on other device.zip
+
+# Or block all .zip archives in this public repo:
+# *.zip

@@ -89,7 +89,7 @@ export default function TopBar({
                 className="h-11 min-w-[52px] px-3 rounded-xl bg-white/90 hover:bg-white text-blue-700 font-bold"
                 title="تغییر زبان ترجمه"
               >
-                {transLang === 'fa' ? 'FA' : 'EN'}
+                {transLang === 'fa' ? 'EN' : 'فا'}
               </button>
             )}
 

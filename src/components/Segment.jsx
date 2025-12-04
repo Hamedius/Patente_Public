@@ -1,22 +1,52 @@
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/router'
+import { useDebouncedCallback } from 'use-debounce'
+import Segment from './Segment'
 import { highlightIt, escapeHTML } from '../lib/highlight'
 
-export default function Segment({ seg, lang = 'fa', terms = [], highlight = true }) {
-  const itHtml = highlightIt(seg.it, terms, highlight)
-  const tr = lang === 'fa' ? seg.fa : seg.en
+export default function SlideView({ segments, lang = 'fa', terms = [], highlight = true }) {
+  const router = useRouter()
+  const [search, setSearch] = useState('')
+  const [items, setItems] = useState([])
+
+  useEffect(() => {
+    setItems(
+      segments.filter((s) => (s?.it || s?.fa || s?.en || '').toString().trim().length)
+    )
+  }, [segments])
+
+  const debouncedSetSearch = useDebouncedCallback((value) => setSearch(value), 300)
 
   return (
-    <div className="mb-4">
-      {/* متن ایتالیایی */}
-      <div
-        className="text-base leading-7 text-gray-900"
-        dir="ltr"
-        dangerouslySetInnerHTML={{ __html: itHtml }}
+    <div className="slide-view">
+      <input
+        type="text"
+        placeholder="Search..."
+        onChange={(e) => debouncedSetSearch(e.target.value)}
+        className="search-input"
       />
-      {/* ترجمه */}
-      <div className={`mt-1 ${lang === 'fa' ? 'text-right' : 'text-left'} text-base text-gray-700`} dir={lang==='fa'?'rtl':'ltr'}>
-        {tr}
-      </div>
+      <ul className={`mt-4 list-disc ${lang === 'fa' ? 'pr-6' : 'pl-6'}`}>
+        {items.map((seg, i) => (
+          seg?.kind === 'li' ? (
+            <li key={`li-${i}`}>
+              <Segment
+                seg={seg}
+                lang={lang}
+                terms={terms}
+                highlight={highlight}
+              />
+            </li>
+          ) : (
+            <Segment
+              key={`seg-${i}`}
+              seg={seg}
+              lang={lang}
+              terms={terms}
+              highlight={highlight}
+            />
+          )
+        ))}
+      </ul>
     </div>
   )
 }

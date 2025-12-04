@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import TopBar from './components/TopBar'
+import React, { useEffect, useRef, useState } from 'react';
+import TopBar from './components/TopBar';
 import SlideView from './components/SlideView'
 import TopicList from './components/TopicList'
 import SlideList from './components/SlideList'
@@ -73,12 +73,15 @@ function resolveDataUrls(file) {
   for (const n of [raw, v1, v2, v3, v4, v5, v6, v7]) {
     const name = ensureJsonSuffix(n); if (!names.includes(name)) names.push(name)
   }
+  const bases = ['/data'];
   const urls = []
   for (const name of names) {
-    const rawUrl = `/data/${name}`
-    const encUrl = `/data/${encodeURIComponent(name)}`
-    if (!urls.includes(rawUrl)) urls.push(rawUrl)
-    if (!urls.includes(encUrl)) urls.push(encUrl)
+    for (const base of bases) {
+      const rawUrl = `${base}/${name}`
+      const encUrl = `${base}/${encodeURIComponent(name)}`
+      if (!urls.includes(rawUrl)) urls.push(rawUrl)
+      if (!urls.includes(encUrl)) urls.push(encUrl)
+    }
   }
   return urls
 }
@@ -91,11 +94,54 @@ function App() {
   const [meta, setMeta] = useState(null)
   const [slideIndex, setSlideIndex] = useState(0)
 
-  const [highlightIt, setHighlightIt] = useState(true) // ← دکمهٔ هایلایت
+  const [highlightIt, setHighlightIt] = useState(() => {
+    try {
+      const v = localStorage.getItem('pv_highlight');
+      return v === null ? true : v === 'true';
+    } catch {
+      return true;
+    }
+  }) // ← دکمهٔ هایلایت
 
   // زبان ترجمهٔ نمایش داده‌شده در اسلاید (fa | en)
-  const [showTrans, setShowTrans] = useState(false); // false=off
-  const [transLang, setTransLang] = useState('fa');  // 'fa' | 'en'
+  const [showTrans, setShowTrans] = useState(() => {
+    try {
+      const v = localStorage.getItem('pv_showTrans');
+      return v === 'true';
+    } catch {
+      return false;
+    }
+  }); // false=off
+  const [transLang, setTransLang] = useState(() => {
+    try {
+      return localStorage.getItem('pv_lang') || 'fa';
+    } catch {
+      return 'fa';
+    }
+  });  // 'fa' | 'en'
+
+  useEffect(() => {
+    try { localStorage.setItem('pv_highlight', String(highlightIt)); } catch {}
+  }, [highlightIt]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pv_showTrans', String(showTrans)); } catch {}
+  }, [showTrans]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pv_lang', transLang); } catch {}
+  }, [transLang]);
+
+  // Force manual history scroll restoration to avoid browser auto-restore fights
+  useEffect(() => {
+    try {
+      if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+        const prev = history.scrollRestoration;
+        history.scrollRestoration = 'manual';
+        return () => { try { history.scrollRestoration = prev || 'auto'; } catch {} };
+      }
+    } catch {}
+  }, []);
 
   // عنوان‌های هدر
   const [topicTitle, setTopicTitle] = useState('')
@@ -105,9 +151,45 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  // اسکرول
-  const topicsScrollRef = useRef(0)
-  const slideScrollRef = useRef(0)
+  // ===== Simple scroll state (Page1/Page2) =====
+  // Page1 = topics (صفحه اول), Page2 = slides (صفحه دوم), Page3 = slide (صفحه سوم)
+  const page1ScrollRef = useRef(0)
+  const page2ScrollRef = useRef(0)
+
+  function saveScroll(ref) {
+    ref.current = (window.pageYOffset || document.documentElement.scrollTop || 0) | 0
+  }
+  function restoreScroll(ref) {
+    const y = ref.current || 0
+    requestAnimationFrame(() => {
+      try { window.scrollTo({ top: y, behavior: 'auto' }) } catch { window.scrollTo(0, y) }
+    })
+  }
+
+  function restoreAfterPaint(ref) {
+    const target = ref.current || 0;
+    let tries = 0;
+    const maxTries = 12; // ~12 frames ≈ 200ms @60fps
+
+    const attempt = () => {
+      const maxScrollable = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0
+      ) - window.innerHeight;
+
+      // If content isn't tall enough yet, wait another frame
+      if (maxScrollable < target && tries < maxTries) {
+        tries++;
+        requestAnimationFrame(attempt);
+        return;
+      }
+      try { window.scrollTo({ top: target, behavior: 'auto' }) } catch { window.scrollTo(0, target) }
+    };
+
+    // Double rAF to ensure layout, then start retries while content grows (images, webfonts)
+    requestAnimationFrame(() => { requestAnimationFrame(attempt) });
+  }
+
 
   // ارتفاع هدر داینامیک
   // Removed per instructions
@@ -116,8 +198,18 @@ function App() {
   useEffect(() => {
     const loadIndex = async () => {
       try {
-        const r = await fetch('/data/index.json', { cache: 'no-store' })
-        const idx = await r.json()
+        const indexCandidates = ['/data/index.json'];
+        let idx = null, okIdx = false;
+        for (const p of indexCandidates) {
+          try {
+            const r = await fetch(p, { cache: 'no-store' });
+            if (!r.ok) continue;
+            idx = await r.json();
+            okIdx = true;
+            break;
+          } catch {}
+        }
+        if (!okIdx) throw new Error('no index');
         const arr = idx?.topics || []
         const sorted = [...arr].sort((a, b) => {
           const na = parseInt(numFromFile(a.file), 10) || Number.MAX_SAFE_INTEGER
@@ -128,8 +220,19 @@ function App() {
         setTopics(sorted); setView('topics')
       } catch {
         try {
-          const r2 = await fetch('/data/output.json', { cache: 'no-store' })
-          const data = await r2.json()
+          let data = null;
+          for (const p of ['/data/output.json']) {
+            try {
+              const r2 = await fetch(p, { cache: 'no-store' });
+              if (!r2.ok) continue;
+              data = await r2.json();
+              if (data && (Array.isArray(data.slides) || Array.isArray(data))) {
+                console.info('Loaded slides from', p);
+                break;
+              }
+            } catch {}
+          }
+          if (!data) throw new Error('no output.json found');
           const single = [{ id: 'single', title: data?.meta?.topicTitle || 'موضوع', file: 'output.json' }]
           setTopics(single)
           setSlides(data.slides || [])
@@ -146,13 +249,21 @@ function App() {
     loadIndex()
   }, [])
 
+  // On app open: everything at top (reset)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   // ورود به یک موضوع
   const loadTopic = async (index) => {
     const t = topics[index]; const file = t?.file; if (!file) return
-    topicsScrollRef.current = window.scrollY || 0
-    window.scrollTo({ top: 0, behavior: 'instant' })
+    // Leaving Page1 → save Page1 scroll
+    saveScroll(page1ScrollRef)
+    // Reset SlideList scroll for new topic
+    page2ScrollRef.current = 0;
     setTopicIndex(index); setSlides([]); setMeta(null); setSlideIndex(0); setErrorMsg(''); setLoading(true); setView('slides')
 
+  
     const candidates = resolveDataUrls(file)
     let ok = false
     for (const url of candidates) {
@@ -174,13 +285,14 @@ function App() {
 
   const onBack = () => {
     if (view === 'slide') {
+      // Page3 → back to Page2
       setView('slides')
-      requestAnimationFrame(() => window.scrollTo({ top: slideScrollRef.current || 0, behavior: 'instant' }))
       return
     }
     if (view === 'slides') {
+      // Leaving Page2 → save its scroll and go to Page1
+      saveScroll(page2ScrollRef)
       setView('topics')
-      requestAnimationFrame(() => window.scrollTo({ top: topicsScrollRef.current || 0, behavior: 'instant' }))
       return
     }
   }
@@ -189,6 +301,29 @@ function App() {
   const slideTitleIt = curSlide?.title_it || curSlide?.title || curSlide?.it || curSlide?.heading || ''
   const slideTitleFa = curSlide?.title_fa || curSlide?.fa || curSlide?.heading_fa || ''
 
+  // Removed useEffect for per-slide scroll saving and scroll restoring
+
+  // Restore for TOPIC LIST only after topics are loaded and view is active
+  useEffect(() => {
+    if (view === 'topics' && topics && topics.length > 0) {
+      restoreAfterPaint(page1ScrollRef)
+    }
+  }, [view, topics && topics.length])
+
+  // Restore for SLIDE LIST only after slides are loaded and not loading
+  useEffect(() => {
+    if (view === 'slides' && !loading && slides && slides.length > 0) {
+      restoreAfterPaint(page2ScrollRef)
+    }
+  }, [view, loading, slides && slides.length])
+
+  // Slide view should always start from top
+  useEffect(() => {
+    if (view === 'slide') {
+      window.scrollTo(0, 0)
+    }
+  }, [view, slideIndex])
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* CSS سراسری برای مخفی‌کردن ردیف موضوع در محتوای اسلاید و خاموش کردن هایلایت */}
@@ -196,6 +331,10 @@ function App() {
       /* تثبیت هدر در همه صفحات و جلوگیری از اسکرول هدر */
       html, body { height: 100%; overflow-y: auto; }
       header.fixed, .fixed.top-0 { position: fixed !important; top: 0; left: 0; right: 0; z-index: 9999; }
+
+      /* محدود کردن عرض محتوا داخل هدر ثابت به همان عرض بدنه (max-w-6xl) */
+      header.fixed > * { max-width: 72rem; margin-left: auto; margin-right: auto; }
+      header.fixed > * > * { max-width: 72rem; margin-left: auto; margin-right: auto; }
 
       /* فاصله‌ی محتوای صفحه از هدر (اگر جایی استایل اینلاین نبود) */
       .with-fixed-header { padding-top: 96px; }
@@ -271,22 +410,20 @@ function App() {
       .slide-content.tr-off .mb-4 > div:first-child + div { display: none !important; }
     `}</style>
 
-      <TopBar
-        view={view}
-        onBack={onBack}
-        topicTitle={topicTitle}
-        topicFaTitle={topicFaTitle}
-        slideTitleIt={slideTitleIt}
-        slideTitleFa={slideTitleFa}
-        showHighlightBtn={view === 'slide'}
-        highlightOn={highlightIt}
-        onToggleHighlight={() => setHighlightIt(v => !v)}
-        showTranslateBtn={view === 'slide'}
-        translateOn={showTrans}
-        onToggleTranslate={() => setShowTrans(v => !v)}
-        transLang={transLang}
-        onCycleTransLang={() => setTransLang(l => (l === 'fa' ? 'en' : 'fa'))}
-      />
+      <div dir="ltr" className="max-w-6xl mx-auto px-4">
+        <TopBar
+          view={view}
+          onBack={onBack}
+          showHighlightBtn={view === 'slide'}
+          highlightOn={highlightIt}
+          onToggleHighlight={() => setHighlightIt(v => !v)}
+          showTranslateBtn={view === 'slide'}
+          translateOn={showTrans}
+          onToggleTranslate={() => setShowTrans(v => !v)}
+          transLang={transLang}
+          onCycleTransLang={() => setTransLang(l => (l === 'fa' ? 'en' : 'fa'))}
+        />
+      </div>
 
       <div className="pb-8 px-4" style={{ paddingTop: 96 }}>
         {view === 'topics' && (
@@ -301,24 +438,61 @@ function App() {
                 {errorMsg}
               </div>
             )}
+
+            {/* Topic title moved out of banner so it scrolls with content */}
+            <div className="max-w-6xl mx-auto text-center mb-4">
+              {topicTitle ? (
+                <div className="font-extrabold tracking-wide text-2xl leading-none" dir="ltr">{topicTitle}</div>
+              ) : null}
+              {topicFaTitle ? (
+                <div className="text-base opacity-90 mt-1 font-vazir" dir="rtl">{topicFaTitle}</div>
+              ) : null}
+            </div>
+
             <SlideList
               slides={slides}
               onPick={(i)=>{
-                slideScrollRef.current = window.scrollY || 0
+                // Leaving Page2 → save current scroll
+                saveScroll(page2ScrollRef)
                 setSlideIndex(i)
                 setView('slide')
-                window.scrollTo({ top: 0, behavior: 'instant' })
               }}
             />
           </>
         )}
 
         {view === 'slide' && (
-          <div className={`slide-content ${highlightIt ? '' : 'hl-off'} ${showTrans ? `lang-${transLang}` : 'tr-off'}`}>
-            {slides.length
-              ? <SlideView slide={slides[slideIndex]} lang={transLang} highlight={highlightIt} hideHeader />
-              : <div className="max-w-3xl mx-auto text-gray-500">محتوایی برای نمایش نیست.</div>}
-          </div>
+          <>
+            {/* Slide title moved out of banner so it scrolls with content */}
+            <div className="max-w-6xl mx-auto text-center mb-4">
+              {slideTitleIt ? (
+                <div className="font-extrabold tracking-wide text-2xl leading-none" dir="ltr">{slideTitleIt}</div>
+              ) : null}
+              {slideTitleFa ? (
+                <div className="text-base opacity-90 mt-1 font-vazir" dir="rtl">{slideTitleFa}</div>
+              ) : null}
+            </div>
+
+            <div
+              className={`slide-content ${highlightIt ? '' : 'hl-off'} ${
+                showTrans ? `lang-${transLang}` : 'tr-off'
+              }`}
+            >
+              {slides.length ? (
+                <SlideView
+                  slide={slides[slideIndex]}
+                  lang={transLang}
+                  highlight={highlightIt}
+                  showTranslation={showTrans}   // ← اینجا ترجمه پاس داده میشه
+                  hideHeader
+                />
+              ) : (
+                <div className="max-w-3xl mx-auto text-gray-500">
+                  محتوایی برای نمایش نیست.
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

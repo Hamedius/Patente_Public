@@ -16,3 +16,10 @@ body {
   font-weight: 600;
   color: #0070f3;
 }
+
+/* جهت‌ها */
+.it-text { direction: ltr; text-align: left; }
+.fa-text { direction: rtl; text-align: right; }
+
+/* کارت ترجمه */
+.tr-card { @apply bg-white shadow rounded-md px-3 py-2 text-gray-900 leading-relaxed; }

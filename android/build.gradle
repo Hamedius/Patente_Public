@@ -1,0 +1,125 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.3.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// ---- FORCE JAVA 17 (and strip any accidental --release 21) ----
+subprojects { project ->
+    // 1) Apply to ALL JavaCompile tasks in ALL modules
+    tasks.withType(JavaCompile).configureEach { task ->
+        // Remove any pre-injected `--release` arguments (e.g., 21)
+        if (task.options != null && task.options.compilerArgs != null) {
+            task.options.compilerArgs.removeAll { it == '--release' || it == '21' || it == '20' || it == '19' || it == '18' }
+        }
+        // Some plugins set options.release; ensure it's not used (Android plugin hates it)
+        try {
+            if (task.options.hasProperty('release')) {
+                task.options.release = null
+            }
+        } catch (Throwable ignored) { }
+
+        // Baseline Java 17 everywhere
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // 2) Android APP modules
+    project.plugins.withId('com.android.application') {
+        project.android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        project.plugins.withId('org.jetbrains.kotlin.android') {
+            project.android { kotlinOptions { jvmTarget = "17" } }
+        }
+    }
+
+    // 3) Android LIB modules (e.g., :capacitor-android)
+    project.plugins.withId('com.android.library') {
+        project.android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        project.plugins.withId('org.jetbrains.kotlin.android') {
+            project.android { kotlinOptions { jvmTarget = "17" } }
+        }
+    }
+
+    // 4) EXTRA hardening for the Capacitor library module
+    if (project.name == 'capacitor-android') {
+        tasks.withType(JavaCompile).configureEach { task ->
+            if (task.options != null && task.options.compilerArgs != null) {
+                task.options.compilerArgs.removeAll { it == '--release' || it == '21' || it == '20' || it == '19' || it == '18' }
+            }
+            try { if (task.options.hasProperty('release')) { task.options.release = null } } catch (Throwable ignored) {}
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
+}
+
+// ---- HARD OVERRIDE for :capacitor-android (kill --release 21, force Java 17)
+project(':capacitor-android') {
+    afterEvaluate {
+        // For Android library plugin (Capacitor Android)
+        plugins.withId('com.android.library') {
+            android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+
+        // For every Java compile task in this module
+        tasks.withType(JavaCompile).configureEach { t ->
+            // Remove any --release (like 21) injected by plugins
+            if (t.options != null && t.options.compilerArgs != null) {
+                t.options.compilerArgs.removeAll { it == '--release' || it == '21' || it == '20' || it == '19' || it == '18' }
+            }
+            try {
+                if (t.options.hasProperty('release')) {
+                    t.options.release = null
+                }
+            } catch (Throwable ignored) { }
+
+            // Force compatibility to 17
+            t.sourceCompatibility = '17'
+            t.targetCompatibility = '17'
+        }
+
+        // If Kotlin Android is applied here, align jvmTarget too
+        plugins.withId('org.jetbrains.kotlin.android') {
+            android {
+                kotlinOptions {
+                    jvmTarget = "17"
+                }
+            }
+        }
+    }
+}

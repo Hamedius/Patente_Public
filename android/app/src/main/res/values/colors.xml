@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_background">#0A57FF</color>
+    <color name="patente_primary">#0A57FF</color>
+    <color name="patente_primary_dark">#073CAD</color>
+</resources>
