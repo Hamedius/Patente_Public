@@ -10,27 +10,6 @@ This public version is ideal for:
 
 ---
 
-# 📌 Differences From the Private Version
-
-### ✅ Included (safe to publish)
-- All React/Vite/Tailwind **source code**
-- Components (`Segment`, `SlideList`, `SlideView`, `TopicList`, etc.)
-- Highlight logic (`src/lib/highlight.js`)
-- Navigation + rendering logic
-- All **UI images** (`public/images`)
-- Build configuration
-- Developer tools in `/tools`
-- Optional Android project (Capacitor)
-
-### ❌ Removed (not safe to publish)
-To protect copyrighted materials:
-- **All JSON files** under `public/data/`
-- Any dataset containing exam content
-- Any derived processed data bundles
-
-A placeholder file may exist in `public/data/` to document this removal.
-
----
 
 # 🚀 Project Overview
 
