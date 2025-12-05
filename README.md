@@ -1,4 +1,4 @@
-# 🚀 Project Overview
+#  Project Overview
 
 The Patente App is a **slide-based learning interface** that loads structured topic files and displays them with:
 
@@ -12,7 +12,7 @@ The public version keeps all logic, so reviewers can fully understand the engine
 
 ---
 
-# 📁 Project Structure (Public Version)
+#  Project Structure (Public Version)
 
 ```text
 Patente_Public/
@@ -58,7 +58,7 @@ Patente_Public/
 
 ---
 
-# 🛠 Installation
+#  Installation
 
 ### 1. Clone the repository
 ```bash
@@ -86,7 +86,7 @@ Vite enables fast hot‑reload.
 
 ---
 
-# 📦 Production Build
+#  Production Build
 
 ```bash
 npm run build
@@ -102,7 +102,7 @@ Output is placed in `/dist` and can be deployed to:
 
 ---
 
-# 📱 Android App (Optional via Capacitor)
+#  Android App (Optional via Capacitor)
 
 To build and run the app on Android:
 
@@ -116,7 +116,7 @@ Use Android Studio to build & deploy to a device.
 
 ---
 
-# 🧪 Developer Tool Scripts
+#  Developer Tool Scripts
 
 The project includes powerful Node-based utilities:
 
@@ -140,11 +140,11 @@ node tools/make-output.cjs
 node tools/qa-report.cjs
 ```
 
-⚠️ These tools operate fully but require JSON data, which is intentionally **not included**.
+!! These tools operate fully but require JSON data, which is intentionally **not included**.
 
 ---
 
-# 📄 About Removed JSON Data
+#  About Removed JSON Data
 
 The private version of the project contains a large set of structured topic files:
 
@@ -168,7 +168,6 @@ This public repository preserves:
 
 ---
 
-# 👤 Author
+#  Author
 
-**Hamed Nahvi**  
-GitHub: https://github.com/Hamedius
+**Hamed Nahvi**
